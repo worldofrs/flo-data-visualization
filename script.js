@@ -10,7 +10,7 @@ const petalPath = "M 0,0 C 30,60 30,60 0,100 C -30,60 -30,60 0,0";
 const leafPath = "M 0,0 C 10,-90 70,-40 100,-110 C 100,-40 70,20 0,0";
 const objectSize = d3.scaleLinear() // steps
         .domain([0, 12000])
-        .range([0.1, 0.3])
+        .range([0.2, 0.3])
         .clamp(true)
         .unknown(0.05);
 
@@ -22,7 +22,7 @@ const flowerColor = d3.scaleSequential(d3.interpolatePlasma) // distance
         .domain([0, 10000])
         .unknown("#dddff0");
 
-const leafColor = d3.scaleSequential(d3.interpolateBuGn) // distance 
+const leafColor = d3.scaleSequential(d3.interpolateYlGnBu) // distance 
         .domain([0, 10000])
         .unknown("#dddff0");
 
@@ -52,7 +52,7 @@ function drawFlower(x, y, options) {
     const petalCount = 5;
     const numLayers = options.numberOfLayers;
     const size = options.size;
-    const opacity = options.opacity;
+    // const opacity = options.opacity;
     const color = options.color;
     const flowerGroup = document.createElementNS(svgNS, "g");
     flowerGroup.setAttribute("transform", `translate(${x}, ${y})`);
@@ -65,7 +65,7 @@ function drawFlower(x, y, options) {
             path.setAttribute("stroke", "white");
             path.setAttribute("stroke-width", "1");
             path.setAttribute("fill", color);
-            // path.setAttribute("fill-opacity", opacity);
+            path.setAttribute("fill-opacity", 1 - 0.1 * i);
             path.setAttribute("transform", `rotate(${angle}) scale(${size})`);
             flowerGroup.appendChild(path);
         }
@@ -101,6 +101,14 @@ function drawBudsWithRings(x, y, intensity) {
         ringGroup.appendChild(circle);
     }
     svgContainer.appendChild(ringGroup);
+}
+
+function drawLilypads(x, y, options) {
+
+}
+
+function lilypadOptionsForDay() {
+    
 }
 
 function flowerOptionsForDay(day) {
@@ -171,7 +179,8 @@ d3.json("combined.json").then(rawData => {
                 if (i >= 1 && day.steps > data[i-1].steps && day.distance > data[i-1].distance) { // today > yesterday -> normal leaf
                     drawLeaf(x, y, true, leafOptionsForDay(day));
                 } else if (i >= 1 && day.steps < data[i-1].steps && day.distance < data[i-1].distance) { // today < yesterday -> reflect leaf
-                    drawLeaf(x, y, false, leafOptionsForDay(day));
+                    // drawLeaf(x, y, false, leafOptionsForDay(day));
+                    drawLeaf(x, y, true, leafOptionsForDay(day));
                 }
                 drawLeaf(x, y, true, leafOptionsForDay(day));
             }
