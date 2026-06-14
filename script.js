@@ -36,8 +36,12 @@ const leafColor = d3.scaleSequential(d3.interpolateYlGnBu) // distance
     .domain([0, 10000])
     .unknown("#dddff0");
 
-const CELL_SIZE = 44;
-const PADDING = 30;
+const CELL_SIZE = 54;
+const ROW_HEIGHT = 60 * 1.55;        // vertical space per month, including gap
+const PADDING_TOP = 60;
+const PADDING_LEFT = 100;
+const X_PADDING = 90;
+const Y_PADDING = 40
 
 // -------------- FUNCTIONS ----------------- //
 
@@ -58,112 +62,115 @@ function drawLeaf(x, y, orientation, options) {
     svgContainer.appendChild(path);
 }
 
-function drawFlower(x, y, options) {
+function drawFlower(selection, options) {
     const petalCount = 5;
-    const numLayers = options.numberOfLayers;
-    const size = options.size;
-    // const opacity = options.opacity;
-    const color = options.color;
-    const flowerGroup = document.createElementNS(svgNS, "g");
-    flowerGroup.setAttribute("transform", `translate(${x}, ${y})`);
+    const { numberOfLayers, size, color } = options;
 
-    for (let i = 0; i < numLayers; i++) {
+    // Build petal data: one entry per petal across all layers
+    const petals = [];
+    for (let i = 0; i < numberOfLayers; i++) {
         for (let j = 0; j < petalCount; j++) {
-            const angle = j * (360 / petalCount) + i * ((360 / petalCount) / numLayers);
-            const path = document.createElementNS(svgNS, "path");
-            path.setAttribute("d", petalPath);
-            path.setAttribute("stroke", "white");
-            path.setAttribute("stroke-width", "1");
-            path.setAttribute("fill", color);
-            path.setAttribute("fill-opacity", 1 - 0.1 * i);
-            path.setAttribute("transform", `rotate(${angle}) scale(${size})`);
-            flowerGroup.appendChild(path);
+            petals.push({
+                angle: j * (360 / petalCount) + i * ((360 / petalCount) / numberOfLayers),
+                layer: i,
+            });
         }
     }
-    svgContainer.appendChild(flowerGroup);
+
+    selection.append("g")
+        .attr("class", "flower")
+        .selectAll("path.petal")
+        .data(petals)
+        .join("path")
+        .attr("class", "petal")
+        .attr("d", petalPath)
+        .attr("stroke", "white")
+        .attr("stroke-width", 1)
+        .attr("fill", color)
+        .attr("fill-opacity", d => 1 - 0.1 * d.layer)
+        .attr("transform", d => `rotate(${d.angle}) scale(${size})`);
 }
 
-function drawBuds(x, y) {
-    const budColor = "#1e32eb"
-    const circle = document.createElementNS(svgNS, "circle");
-    circle.setAttribute("cx", x);
-    circle.setAttribute("cy", y);
-    circle.setAttribute("r", "4");
-    circle.setAttribute("fill", budColor);
-    svgContainer.appendChild(circle);
+function drawBuds(selection) {
+    const budColor = "#1e32eb";
+    selection.append("circle")
+        .attr("cx", 0)
+        .attr("cy", 0)
+        .attr("r", 4)
+        .attr("fill", budColor);
 }
 
-function drawBudsWithRings(x, y, intensity) {
-    const budColor = "#1e32eb"
+function drawBudsWithRings(selection, options) {
+    const { intensity } = options;
+    const budColor = "#1e32eb";
     const ringColor = "#1e32eb";
-    const ringGroup = document.createElementNS(svgNS, "g");
-    const circle = document.createElementNS(svgNS, "circle");
-    circle.setAttribute("cx", x);
-    circle.setAttribute("cy", y);
-    circle.setAttribute("r", "4");
-    circle.setAttribute("fill", budColor);
-    svgContainer.appendChild(circle);
-    ringGroup.setAttribute("transform", `translate(${x}, ${y})`);
-    for (let i = 0; i < intensity; i++) {
-        const circle = document.createElementNS(svgNS, "circle");
-        circle.setAttribute("cx", 0);
-        circle.setAttribute("cy", 0);
-        circle.setAttribute("r", 8 + 5 * i);
-        circle.setAttribute("fill", "none")
-        circle.setAttribute("stroke", ringColor);
-        ringGroup.appendChild(circle);
-    }
-    svgContainer.appendChild(ringGroup);
+
+    selection.append("circle")
+        .attr("cx", 0)
+        .attr("cy", 0)
+        .attr("r", 4)
+        .attr("fill", budColor);
+
+    selection.selectAll("circle.ring")
+        .data(d3.range(intensity))   // [0, 1, 2, ...intensity-1]
+        .join("circle")
+        .attr("class", "ring")
+        .attr("cx", 0)
+        .attr("cy", 0)
+        .attr("r", i => 8 + 5 * i)
+        .attr("fill", "none")
+        .attr("stroke", ringColor);
 }
 
 // opacityDimmed == true  -> pad rendered faded (used behind a flower)
 // opacityDimmed == false -> pad rendered solid (standalone)
-function drawLilypads(x, y, opacityDimmed, options) {
+function drawLilypads(selection, options, opacityDimmed) {
     const backgroundColor = opacityDimmed ? "#fefec169" : "#fefec1fd";
     const mainColor = opacityDimmed ? "#65ad3e6e" : "#65ad3e";
     const overlapColor = opacityDimmed ? "#06420e6f" : "#06420e";
-    const lilypadRadius = opacityDimmed ?  6 : options.lilypadRadius;
+    const lilypadRadius = opacityDimmed ? 6 : options.lilypadRadius;
     const completion = options.completion;
 
     const baseCompletion = Math.min(completion, 1);
     const excessCompletion = Math.max(0, Math.min(completion - 1, 1));
 
-    const padGroup = document.createElementNS(svgNS, "g");
-    const circle = document.createElementNS(svgNS, "circle");
-    
-    circle.setAttribute("cx", 0);
-    circle.setAttribute("cy", 0);
-    circle.setAttribute("r", lilypadRadius);
-    circle.setAttribute("fill", backgroundColor);
-    padGroup.appendChild(circle);
-    padGroup.setAttribute("transform", `translate(${x}, ${y})`);
-
+    // Build the data array for the arcs we want to draw
+    const arcs = [];
     if (baseCompletion > 0) {
-        const achievementArc = d3.arc()
-            .innerRadius(0)
-            .outerRadius(lilypadRadius)
-            .startAngle(0)
-            .endAngle(-Math.PI * 2 * baseCompletion);
-
-        const arcPath = document.createElementNS(svgNS, "path");
-        arcPath.setAttribute("d", achievementArc());
-        arcPath.setAttribute("fill", mainColor);
-        padGroup.appendChild(arcPath);
+        arcs.push({
+            startAngle: 0,
+            endAngle: -Math.PI * 2 * baseCompletion,
+            fill: mainColor,
+        });
     }
-
     if (excessCompletion > 0) {
-        const excessArc = d3.arc()
-            .innerRadius(0)
-            .outerRadius(lilypadRadius)
-            .startAngle(0)
-            .endAngle(-Math.PI * 2 * excessCompletion);
-
-        const arcPath = document.createElementNS(svgNS, "path");
-        arcPath.setAttribute("d", excessArc());
-        arcPath.setAttribute("fill", overlapColor);
-        padGroup.appendChild(arcPath);
+        arcs.push({
+            startAngle: 0,
+            endAngle: -Math.PI * 2 * excessCompletion,
+            fill: overlapColor,
+        });
     }
-    svgContainer.appendChild(padGroup);
+
+    const arcGen = d3.arc().innerRadius(0).outerRadius(lilypadRadius);
+
+    // Create a group for this lily pad
+    const padGroup = selection.append("g")
+        .attr("class", "lilypad");
+
+    // The pad background (one circle)
+    padGroup.append("circle")
+        .attr("cx", 0)
+        .attr("cy", 0)
+        .attr("r", lilypadRadius)
+        .attr("fill", backgroundColor);
+
+    // The arcs (zero, one, or two of them)
+    padGroup.selectAll("path.arc")
+        .data(arcs)
+        .join("path")
+        .attr("class", "arc")
+        .attr("d", d => arcGen({ startAngle: d.startAngle, endAngle: d.endAngle }))
+        .attr("fill", d => d.fill);
 }
 
 function lilypadOptionsForDay(day, lilypadRadius) {
@@ -199,15 +206,15 @@ function positionForDate(startDate, date) {
     const monthsSinceStart = (date.getFullYear() - startYear) * 12 + (date.getMonth() - startMonth);
     const dayOfMonth = date.getDate();
     return {
-        x: PADDING + (dayOfMonth - 1) * CELL_SIZE,
-        y: PADDING + monthsSinceStart * 1.25 * CELL_SIZE,
+        x: PADDING_LEFT + (dayOfMonth - 1) * CELL_SIZE,
+        y: PADDING_TOP + monthsSinceStart * ROW_HEIGHT,
     };
 
 }
 
 // -------------- DATA ----------------- //
 
-d3.json("combined.json").then(rawData => {
+d3.json("combined-1.json").then(rawData => {
     const data = rawData.map(d => ({
         date: new Date(d.date),
         intensity: d.intensity,
@@ -220,54 +227,110 @@ d3.json("combined.json").then(rawData => {
     globalMaxDistance = d3.max(data, d => d.distance);
     const lilypadRadius = d3.scaleLinear()
         .domain([0, globalMaxDistance])
-        .range([5, 20])
+        .range([5, 25])
         .clamp(false)
         .unknown(0);
 
-    // data.slice(140, 150).forEach((day, i) => {
-    //     const x = 100 + i * 80;
-    //     const y = 200;
-    //     if (day.cycleId != null) {
-    //         drawFlower(x, y, flowerOptionsForDay(day));
-    //     } else {
-    //         drawLeaf(x, y, leafOptionsForDay(day));
-    //     }
-    // });
 
     const startDate = data[0].date;
-    data.forEach((day, i) => {
-        const { x, y } = positionForDate(startDate, day.date);
-        if (day.cycleId != null) {
-            if (day.steps == null && day.distance == null) {
-                drawBudsWithRings(x, y, day.intensity);
-            } else {
-                drawFlower(x, y, flowerOptionsForDay(day));
-                drawLilypads(x, y, true, lilypadOptionsForDay(day, lilypadRadius));
 
+    // Group your data by month
+    const monthsData = d3.group(data, d => `${d.date.getFullYear()}-${d.date.getMonth()}`);
+    // monthsData is a Map: key = "2025-0", value = array of days in Jan 2025
+
+    // Outer join: one <g> per month
+    const monthGroups = d3.select("#flower")
+        .selectAll("g.month")
+        .data([...monthsData], ([key, days]) => key)   // entries of the Map, keyed by month
+        .join("g")
+        .attr("class", "month")
+        .attr("transform", ([key, days]) => {
+            // position the month-group based on its first day
+            const firstDay = days[0];
+            const { y } = positionForDate(startDate, firstDay.date);
+            return `translate(0, ${y})`;   // y handles the row position
+        });
+
+    const dayGroups = monthGroups.selectAll("g.day")
+        .data(([key, days]) => days)
+        .join("g")
+        .attr("class", "day")
+        .attr("transform", d => `translate(${X_PADDING + (d.date.getDate() - 1) * CELL_SIZE}, 0)`);
+
+    dayGroups.each(function (d) {
+        const day = d3.select(this);
+
+        if (d.cycleId != null) {
+            if (d.steps == null && d.distance == null) {
+                drawBudsWithRings(day, { intensity: d.intensity });
+            } else {
+                drawFlower(day, flowerOptionsForDay(d));
+                drawLilypads(day, lilypadOptionsForDay(d, lilypadRadius), true);
             }
         } else {
-            if (day.steps == null && day.distance == null) {
-                drawBuds(x, y);
+            if (d.steps == null && d.distance == null) {
+                drawBuds(day);
             } else {
-
-                drawLilypads(x, y, false, lilypadOptionsForDay(day, lilypadRadius));
+                drawLilypads(day, lilypadOptionsForDay(d, lilypadRadius), false);
             }
         }
     });
 
 
-    // svgContainer.attr("background", "black");
+    const allPositions = data.map(d => positionForDate(startDate, d.date));
+    const maxX = Math.max(...allPositions.map(p => p.x));
+    const maxY = Math.max(...allPositions.map(p => p.y));
+    const contentWidth = maxX + CELL_SIZE;     // +CELL_SIZE for the rightmost cell's footprint
+    const contentHeight = maxY + CELL_SIZE;
 
-    // const legend = d3.select("#flower")
-    //                 .append("svg")
-    //                 .
+    d3.select("#flower")
+        .attr("viewBox", `0 0 ${contentWidth} ${contentHeight}`)
+        .attr("preserveAspectRatio", "xMidYMid meet");
 
-    // const periodDays = data.filter(d => d.intensity != null);
-    // const day = data[181];
-    // console.log(day);
-    // drawFlower(300, 100, flowerOptionsForDay(day));
-    // drawLeaf(100, 100, leafOptionsForDay(data[100]));
 
+    monthGroups.append("text")
+        .attr("class", "month-label")
+        .attr("x", X_PADDING - 76)
+        .attr("y", 40)
+        .attr("transform", "rotate(-90)")
+        .attr("text-anchor", "end")
+        .attr("dominant-baseline", "middle")
+        .attr("font-size", 15)
+        .attr("font-family", "sans-serif")
+        .attr("fill", "#005b56")
+        .text(([key, days]) => days[0].date.toLocaleDateString('en-US', { month: 'short' }));
+
+    d3.select("#flower")
+        .selectAll("text.day-label")
+        .data(d3.range(1, 32))   // [1, 2, 3, ..., 31]
+        .join("text")
+        .attr("class", "day-label")
+        .attr("x", d => X_PADDING + (d - 1) * CELL_SIZE)
+        .attr("y", Y_PADDING - 10)
+        .attr("text-anchor", "middle")
+        .attr("font-size", 9)
+        .attr("font-family", "sans-serif")
+        .attr("fill", "#0d04ab")
+        .text(d => d);
+
+    const uniqueYears = [...new Set(data.map(d => d.date.getFullYear()))];
+
+    d3.select("#flower")
+        .selectAll("text.year-label")
+        .data(uniqueYears)
+        .join("text")
+        .attr("class", "year-label")
+        .attr("x", X_PADDING - 50)
+        .attr("y", year => {
+            const firstDayOfYear = data.find(d => d.date.getFullYear() === year);
+            return positionForDate(startDate, firstDayOfYear.date).y - 45;
+        })
+        .attr("text-anchor", "end")
+        .attr("font-size", 16)
+        .attr("font-weight", "bold")
+        .attr("font-family", "sans-serif")
+        .attr("fill", "#333")
+        .text(year => year);
 });
 
 
