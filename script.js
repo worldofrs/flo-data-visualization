@@ -24,24 +24,26 @@ const objectSize = d3.scaleLinear() // steps
 //         .unknown(0);
 
 
-const objectOpacity = d3.scaleLinear() // distance
-    .domain([0, 10000])
-    .range([0.3, 1]);
+// const objectOpacity = d3.scaleLinear() // distance
+//     .domain([0, 10000])
+//     .range([0.3, 1]);
 
-const flowerColor = d3.scaleSequential(d3.interpolatePlasma) // distance 
+const flowerColor = d3.scaleSequential(d3.interpolateRainbow) // distance 
     .domain([0, 10000])
-    .unknown("#dddff0");
+    .clamp(false);
 
-const leafColor = d3.scaleSequential(d3.interpolateYlGnBu) // distance 
-    .domain([0, 10000])
-    .unknown("#dddff0");
+// const leafColor = d3.scaleSequential(d3.interpolateYlGnBu) // steps 
+//     .domain([0, 10000])
+//     .unknown("#dddff0");
 
 const CELL_SIZE = 54;
 const ROW_HEIGHT = 60 * 1.55;        // vertical space per month, including gap
 const PADDING_TOP = 60;
 const PADDING_LEFT = 100;
-const X_PADDING = 90;
+const X_PADDING = 120;
 const Y_PADDING = 40
+const LEGEND_HEIGHT = 600;  
+
 
 // -------------- FUNCTIONS ----------------- //
 
@@ -176,8 +178,8 @@ function drawLilypads(selection, options, opacityDimmed) {
 function lilypadOptionsForDay(day, lilypadRadius) {
     const rawCompletion = day.steps != null ? day.steps / stepGoal : 0;
     return {
-        lilypadRadius: lilypadRadius(day.distance),
-        completion: rawCompletion
+        lilypadRadius: lilypadRadius(day.distance), // radius ~ distance
+        completion: rawCompletion // completion ~ arc ~ steps
     }
 
 }
@@ -185,9 +187,9 @@ function lilypadOptionsForDay(day, lilypadRadius) {
 function flowerOptionsForDay(day) {
     return {
         numberOfLayers: day.intensity,
-        size: objectSize(day.steps),
-        opacity: objectOpacity(day.distance),
-        color: flowerColor(day.distance)
+        size: objectSize(day.distance), // flower size ~ steps
+        // opacity: objectOpacity(day.distance),
+        color: flowerColor(day.steps) // flower color ~ distance
     }
 }
 
@@ -231,15 +233,64 @@ d3.json("combined-1.json").then(rawData => {
         .clamp(false)
         .unknown(0);
 
+    const legend = d3.select("#flower")
+        .append("g")
+        .attr("class", "legend")
+        .attr("transform", `translate(${PADDING_LEFT}, 20)`);
 
+
+    legend.append("text")
+        .attr("x", LEGEND_HEIGHT*4 + 50)
+        .attr("y", 0)
+        .attr("dominant-baseline", "hanging")
+        .attr("font-size", 40)
+        .attr("font-weight", "bold")
+        .attr("fill", "#333")
+        .attr("text-anchor", "middle")
+        .text("Legend");
+
+    legend.append("text")
+        .attr("x", 0)
+        .attr("y", LEGEND_HEIGHT/6 + 50)
+        .attr("dominant-baseline", "hanging")
+        .attr("font-size", 22)
+        .attr("font-weight", "bold")
+        .attr("fill", "#333")
+        .attr("text-anchor", "middle")
+        .text("non-wearable data");
+
+    legend.append("text")
+        .attr("x", 0)
+        .attr("y", LEGEND_HEIGHT/6 + (5 * (LEGEND_HEIGHT/6))/ 2 + 50)
+        .attr("dominant-baseline", "hanging")
+        .attr("font-size", 22)
+        .attr("font-weight", "bold")
+        .attr("fill", "#333")
+        .attr("text-anchor", "middle")
+        .text("wearables data");
+
+    legend.append("text")
+        .attr("x", LEGEND_HEIGHT*6)
+        .attr("y", 0)
+        .attr("dominant-baseline", "hanging")
+        .attr("font-size", 22)
+        .attr("font-weight", "bold")
+        .attr("fill", "#333")
+        .attr("text-anchor", "middle")
+        .text("period day");
+    
+    
     const startDate = data[0].date;
 
     // Group your data by month
-    const monthsData = d3.group(data, d => `${d.date.getFullYear()}-${d.date.getMonth()}`);
-    // monthsData is a Map: key = "2025-0", value = array of days in Jan 2025
+    const calendar = d3.select("#flower")
+    .append("g")
+    .attr("class", "calendar")
+    .attr("transform", `translate(0, ${LEGEND_HEIGHT})`);
 
-    // Outer join: one <g> per month
-    const monthGroups = d3.select("#flower")
+    const monthsData = d3.group(data, d => `${d.date.getFullYear()}-${d.date.getMonth()}`);
+    
+    const monthGroups = calendar
         .selectAll("g.month")
         .data([...monthsData], ([key, days]) => key)   // entries of the Map, keyed by month
         .join("g")
@@ -257,6 +308,7 @@ d3.json("combined-1.json").then(rawData => {
         .attr("class", "day")
         .attr("transform", d => `translate(${X_PADDING + (d.date.getDate() - 1) * CELL_SIZE}, 0)`);
 
+    // plotting data
     dayGroups.each(function (d) {
         const day = d3.select(this);
 
@@ -276,7 +328,7 @@ d3.json("combined-1.json").then(rawData => {
         }
     });
 
-
+    // month, day, and year labels
     const allPositions = data.map(d => positionForDate(startDate, d.date));
     const maxX = Math.max(...allPositions.map(p => p.x));
     const maxY = Math.max(...allPositions.map(p => p.y));
@@ -284,14 +336,14 @@ d3.json("combined-1.json").then(rawData => {
     const contentHeight = maxY + CELL_SIZE;
 
     d3.select("#flower")
-        .attr("viewBox", `0 0 ${contentWidth} ${contentHeight}`)
-        .attr("preserveAspectRatio", "xMidYMid meet");
+    .attr("viewBox", `0 0 ${contentWidth} ${contentHeight + LEGEND_HEIGHT}`)
+    .attr("preserveAspectRatio", "xMidYMid meet");
 
 
     monthGroups.append("text")
         .attr("class", "month-label")
-        .attr("x", X_PADDING - 76)
-        .attr("y", 40)
+        .attr("x", X_PADDING - 106)
+        .attr("y", 70)
         .attr("transform", "rotate(-90)")
         .attr("text-anchor", "end")
         .attr("dominant-baseline", "middle")
@@ -300,7 +352,7 @@ d3.json("combined-1.json").then(rawData => {
         .attr("fill", "#005b56")
         .text(([key, days]) => days[0].date.toLocaleDateString('en-US', { month: 'short' }));
 
-    d3.select("#flower")
+    calendar
         .selectAll("text.day-label")
         .data(d3.range(1, 32))   // [1, 2, 3, ..., 31]
         .join("text")
@@ -315,22 +367,31 @@ d3.json("combined-1.json").then(rawData => {
 
     const uniqueYears = [...new Set(data.map(d => d.date.getFullYear()))];
 
-    d3.select("#flower")
+    const yearRanges = uniqueYears.map(year => {
+        const daysInYear = data.filter(d => d.date.getFullYear() === year);
+        const firstDay = daysInYear[0];
+        const lastDay = daysInYear[daysInYear.length - 1];
+        return { year, firstDay, lastDay };
+    });
+
+    calendar
         .selectAll("text.year-label")
-        .data(uniqueYears)
+        .data(yearRanges)
         .join("text")
         .attr("class", "year-label")
-        .attr("x", X_PADDING - 50)
-        .attr("y", year => {
-            const firstDayOfYear = data.find(d => d.date.getFullYear() === year);
-            return positionForDate(startDate, firstDayOfYear.date).y - 45;
-        })
-        .attr("text-anchor", "end")
-        .attr("font-size", 16)
+        .attr("text-anchor", "middle")
+        .attr("font-size", 20)
         .attr("font-weight", "bold")
         .attr("font-family", "sans-serif")
         .attr("fill", "#333")
-        .text(year => year);
+        .attr("transform", d => {
+            const yFirst = positionForDate(startDate, d.firstDay.date).y;
+            const yLast = positionForDate(startDate, d.lastDay.date).y;
+            const yMid = (yFirst + yLast) / 2;
+            const x = PADDING_LEFT - 60;
+            return `translate(${x}, ${yMid}) rotate(-90)`;
+        })
+        .text(d => d.year);
 });
 
 
