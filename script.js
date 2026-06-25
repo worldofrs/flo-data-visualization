@@ -9,7 +9,7 @@ let globalMaxDistance;
 const stepGoal = 10000; // according to my suunto watch
 const petalPath = "M 0,0 C 30,60 30,60 0,100 C -30,60 -30,60 0,0";
 const leafPath = "M 0,0 C 10,-90 70,-40 100,-110 C 100,-40 70,20 0,0";
-const objectSize = d3.scaleLinear() // steps
+const objectSize = d3.scaleLinear() // distance -> flower size, lilypad radius
     .domain([0, 12000])
     .range([0.2, 0.3])
     .clamp(true)
@@ -28,8 +28,8 @@ const objectSize = d3.scaleLinear() // steps
 //     .domain([0, 10000])
 //     .range([0.3, 1]);
 
-const flowerColor = d3.scaleSequential(d3.interpolateRainbow) // distance 
-    .domain([0, 10000])
+const flowerColor = d3.scaleSequential(d3.interpolateRainbow) // steps 
+    .domain([0, 20000])
     .clamp(false);
 
 // const leafColor = d3.scaleSequential(d3.interpolateYlGnBu) // steps 
@@ -42,7 +42,22 @@ const PADDING_TOP = 60;
 const PADDING_LEFT = 100;
 const X_PADDING = 120;
 const Y_PADDING = 40
-const LEGEND_HEIGHT = 600;  
+
+// outer grid dimensions
+const LEGEND_HEIGHT = 600;
+const LEGEND_COL_WIDTH = 350;        // each main column is wide
+const LEGEND_ROW_HEIGHT = 240;       // each row is tall (bottom row needs lots of vertical space)
+const LEGEND_HEADER_Y = 60;          // where column headers sit
+const LEGEND_LABEL_X = 100;          // where row labels sit (right-aligned)
+const LEGEND_GRID_OFFSET_X = 180;    // where the grid cells start, leaving room for row labels
+const LEGEND_GRID_OFFSET_Y = 110;    // where the grid cells start, below column headers
+const ROW_Y = [100, 380];   // y-coordinate for top row, bottom row
+
+
+// sample values used across the wearables legend
+const SAMPLE_STEPS = 7500;
+const SAMPLE_DISTANCE = 2000;
+const SAMPLE_COMPLETION = 0.7;
 
 
 // -------------- FUNCTIONS ----------------- //
@@ -175,6 +190,14 @@ function drawLilypads(selection, options, opacityDimmed) {
         .attr("fill", d => d.fill);
 }
 
+// defines dimensions of legend grid cells
+function legendCell(col, row) {
+    return {
+        x: LEGEND_GRID_OFFSET_X + col * LEGEND_COL_WIDTH,
+        y: ROW_Y[row],
+    };
+}
+
 function lilypadOptionsForDay(day, lilypadRadius) {
     const rawCompletion = day.steps != null ? day.steps / stepGoal : 0;
     return {
@@ -187,9 +210,8 @@ function lilypadOptionsForDay(day, lilypadRadius) {
 function flowerOptionsForDay(day) {
     return {
         numberOfLayers: day.intensity,
-        size: objectSize(day.distance), // flower size ~ steps
-        // opacity: objectOpacity(day.distance),
-        color: flowerColor(day.steps) // flower color ~ distance
+        size: objectSize(day.steps), // flower size ~ steps
+        color: flowerColor(day.distance) // flower color ~ distance
     }
 }
 
@@ -238,58 +260,239 @@ d3.json("combined-1.json").then(rawData => {
         .attr("class", "legend")
         .attr("transform", `translate(${PADDING_LEFT}, 20)`);
 
+    // One <g> per grid cell, translated to its grid coordinates
+    const topLeft = legend.append("g")
+        .attr("class", "legend-cell")
+        .attr("transform", `translate(${legendCell(0, 0).x}, ${legendCell(0, 0).y})`);
 
-    legend.append("text")
-        .attr("x", LEGEND_HEIGHT*4 + 50)
-        .attr("y", 0)
-        .attr("dominant-baseline", "hanging")
-        .attr("font-size", 40)
+    const topRight = legend.append("g")
+        .attr("class", "legend-cell")
+        .attr("transform", `translate(${legendCell(1, 0).x}, ${legendCell(1, 0).y})`);
+
+    const bottomLeft = legend.append("g")
+        .attr("class", "legend-cell")
+        .attr("transform", `translate(${legendCell(0, 1).x}, ${legendCell(0, 1).y})`);
+
+    const bottomRight = legend.append("g")
+        .attr("class", "legend-cell")
+        .attr("transform", `translate(${legendCell(1, 1).x}, ${legendCell(1, 1).y})`);
+
+    // Column headers (period day, non-period day)
+    legend.selectAll("text.col-header")
+        .data(["period day", "non-period day"])
+        .join("text")
+        .attr("class", "col-header")
+        .attr("x", (d, i) => legendCell(i, 0).x + 80)  // centered over each column
+        .attr("y", LEGEND_HEADER_Y)
+        .attr("text-anchor", "middle")
+        .attr("font-size", 20)
         .attr("font-weight", "bold")
         .attr("fill", "#333")
-        .attr("text-anchor", "middle")
-        .text("Legend");
+        .text(d => d);
 
-    legend.append("text")
-        .attr("x", 0)
-        .attr("y", LEGEND_HEIGHT/6 + 50)
-        .attr("dominant-baseline", "hanging")
-        .attr("font-size", 22)
+    // Row headers (non-wearable data, wearables data)
+    legend.selectAll("text.row-header")
+        .data(["non-wearable data", "wearables data"])
+        .join("text")
+        .attr("class", "row-header")
+        .attr("x", LEGEND_LABEL_X)
+        .attr("y", (d, i) => legendCell(0, i).y + 40)
+        .attr("text-anchor", "end")
+        .attr("font-size", 18)
         .attr("font-weight", "bold")
         .attr("fill", "#333")
-        .attr("text-anchor", "middle")
-        .text("non-wearable data");
+        .text(d => d);
 
-    legend.append("text")
-        .attr("x", 0)
-        .attr("y", LEGEND_HEIGHT/6 + (5 * (LEGEND_HEIGHT/6))/ 2 + 50)
-        .attr("dominant-baseline", "hanging")
-        .attr("font-size", 22)
-        .attr("font-weight", "bold")
-        .attr("fill", "#333")
-        .attr("text-anchor", "middle")
-        .text("wearables data");
+    // Three buds-with-rings at intensities 1, 2, 3
+    [1, 2, 3].forEach((intensity, i) => {
+        const bud = topLeft.append("g")
+            .attr("transform", `translate(${i * 80 + 40}, 30)`);
+        drawBudsWithRings(bud, { intensity });
 
-    legend.append("text")
-        .attr("x", LEGEND_HEIGHT*6)
-        .attr("y", 0)
-        .attr("dominant-baseline", "hanging")
-        .attr("font-size", 22)
-        .attr("font-weight", "bold")
-        .attr("fill", "#333")
+        topLeft.append("text")
+            .attr("x", i * 80 + 40)
+            .attr("y", 90)
+            .attr("text-anchor", "middle")
+            .attr("font-size", 12)
+            .attr("fill", "#666")
+            .text(intensity);
+    });
+
+    // "intensity" label
+    topLeft.append("text")
+        .attr("x", 120)
+        .attr("y", 110)
         .attr("text-anchor", "middle")
-        .text("period day");
-    
-    
+        .attr("font-size", 14)
+        .attr("fill", "#333")
+        .text("intensity");
+
+    const bud = topRight.append("g")
+        .attr("transform", "translate(40, 30)");
+    drawBuds(bud);
+
+    // Sub-section 1: Intensity — vary numberOfLayers, hold everything else
+    [1, 2, 3].forEach((intensity, i) => {
+        const flower = bottomLeft.append("g")
+            .attr("transform", `translate(${i * 80 + 40}, 30)`);
+        drawFlower(flower, {
+            numberOfLayers: intensity,
+            size: 0.25,                              // HELD
+            color: flowerColor(SAMPLE_DISTANCE),     // HELD
+        });
+        bottomLeft.append("text")
+            .attr("x", i * 80 + 40)
+            .attr("y", 80)
+            .attr("text-anchor", "middle")
+            .attr("font-size", 12)
+            .attr("fill", "#666")
+            .text(intensity);
+    });
+    bottomLeft.append("text")
+        .attr("x", 120)
+        .attr("y", 100)
+        .attr("text-anchor", "middle")
+        .attr("font-size", 14)
+        .attr("fill", "#333")
+        .text("intensity");
+
+    // Sub-section 2: Distance — vary color via gradient bar
+    const barWidth = 200;
+    const steps = 50;
+    bottomLeft.selectAll("rect.gradient")
+        .data(d3.range(steps))
+        .join("rect")
+        .attr("class", "gradient")
+        .attr("x", i => 40 + (i / steps) * barWidth)
+        .attr("y", 130)
+        .attr("width", barWidth / steps + 1)
+        .attr("height", 16)
+        .attr("fill", i => flowerColor((i / steps) * 10000));
+
+    // Left endpoint label (e.g., "0 km")
+bottomLeft.append("text")
+    .attr("x", 40)                    // matches the gradient bar's left x
+    .attr("y", 160)                   // just below the bar (bar is at y=130, height=16)
+    .attr("text-anchor", "middle")
+    .attr("font-size", 10)
+    .attr("fill", "#666")
+    .text("0 km");
+
+// Right endpoint label (e.g., "10,000 m" or "10 km")
+bottomLeft.append("text")
+    .attr("x", 40 + barWidth)         // matches the gradient bar's right end
+    .attr("y", 160)                   // same y as the left label
+    .attr("text-anchor", "middle")
+    .attr("font-size", 10)
+    .attr("fill", "#666")
+    .text("10,000 km");
+
+    bottomLeft.append("text")
+        .attr("x", 10)
+        .attr("y", 138)
+        .attr("text-anchor", "end")
+        .attr("dominant-baseline", "middle")
+        .attr("font-size", 14)
+        .attr("fill", "#333")
+        .text("distance");
+
+    // Sub-section 3: Steps — vary size, hold everything else
+    [0.18, 0.25, 0.32].forEach((size, i) => {
+        const flower = bottomLeft.append("g")
+            .attr("transform", `translate(${i * 80 + 40}, 200)`);
+        drawFlower(flower, {
+            numberOfLayers: 2,                       // HELD
+            size: size,
+            color: flowerColor(SAMPLE_DISTANCE),     // HELD
+        });
+    });
+    bottomLeft.append("text")
+        .attr("x", 10)
+        .attr("y", 200)
+        .attr("text-anchor", "end")
+        .attr("dominant-baseline", "middle")
+        .attr("font-size", 14)
+        .attr("fill", "#333")
+        .text("steps");
+
+
+    // Sub-section 1: Steps (arc completion) — vary completion, hold radius
+    const STEPS_COMPLETION_SAMPLES = [2500, 7500, 10000, 15000];
+
+    STEPS_COMPLETION_SAMPLES.forEach((steps, i) => {
+        const completion = steps / stepGoal;   // derive from real data math
+
+        const pad = bottomRight.append("g")
+            .attr("transform", `translate(${i * 60 + 60}, 30)`);
+        drawLilypads(pad, {
+            lilypadRadius: 14,                  // HELD
+            completion,
+        }, false);
+
+        bottomRight.append("text")
+            .attr("x", i * 60 + 60)
+            .attr("y", 65)
+            .attr("text-anchor", "middle")
+            .attr("font-size", 10)
+            .attr("fill", "#666")
+            .text(steps.toLocaleString());
+    });
+
+    bottomRight.append("text")
+        .attr("x", 10)
+        .attr("y", 30)
+        .attr("text-anchor", "end")
+        .attr("dominant-baseline", "middle")
+        .attr("font-size", 14)
+        .attr("fill", "#333")
+        .text("steps");
+
+    // Sub-section 2: Distance (radius) — vary radius, hold completion
+    const distanceExamples = [
+        d3.min(data, d => d.distance),
+        d3.max(data, d => d.distance) / 2,    // midpoint
+        d3.max(data, d => d.distance),
+    ];
+    distanceExamples.forEach((distance, i) => {
+        const pad = bottomRight.append("g")
+            .attr("transform", `translate(${i * (60 + 10 * i) + 60}, 150)`);
+
+        // Use the actual scale from your code so the legend stays honest
+        const radius = lilypadRadius(distance);
+        drawLilypads(pad, {
+            lilypadRadius: radius,
+            completion: SAMPLE_COMPLETION,            // HELD
+        }, false);
+
+        // Label below each pad
+        bottomRight.append("text")
+            .attr("x", i * 80 + 60)
+            .attr("y", 190)
+            .attr("text-anchor", "middle")
+            .attr("font-size", 10)
+            .attr("fill", "#666")
+            .text(distance.toLocaleString() + " km");
+    });
+    bottomRight.append("text")
+        .attr("x", 10)
+        .attr("y", 150)
+        .attr("text-anchor", "end")
+        .attr("dominant-baseline", "middle")
+        .attr("font-size", 14)
+        .attr("fill", "#333")
+        .text("distance");
+
+
     const startDate = data[0].date;
 
     // Group your data by month
     const calendar = d3.select("#flower")
-    .append("g")
-    .attr("class", "calendar")
-    .attr("transform", `translate(0, ${LEGEND_HEIGHT})`);
+        .append("g")
+        .attr("class", "calendar")
+        .attr("transform", `translate(0, ${LEGEND_HEIGHT})`);
 
     const monthsData = d3.group(data, d => `${d.date.getFullYear()}-${d.date.getMonth()}`);
-    
+
     const monthGroups = calendar
         .selectAll("g.month")
         .data([...monthsData], ([key, days]) => key)   // entries of the Map, keyed by month
@@ -336,8 +539,8 @@ d3.json("combined-1.json").then(rawData => {
     const contentHeight = maxY + CELL_SIZE;
 
     d3.select("#flower")
-    .attr("viewBox", `0 0 ${contentWidth} ${contentHeight + LEGEND_HEIGHT}`)
-    .attr("preserveAspectRatio", "xMidYMid meet");
+        .attr("viewBox", `0 0 ${contentWidth} ${contentHeight + LEGEND_HEIGHT}`)
+        .attr("preserveAspectRatio", "xMidYMid meet");
 
 
     monthGroups.append("text")
@@ -392,6 +595,9 @@ d3.json("combined-1.json").then(rawData => {
             return `translate(${x}, ${yMid}) rotate(-90)`;
         })
         .text(d => d.year);
+
+        console.log(d3.max(data, d => d.distance))   // should be ≤ 12000 for the current domain
+        console.log(d3.max(data, d => d.steps)); 
 });
 
 
