@@ -14,7 +14,7 @@ const objectSize = d3.scaleLinear() // distance -> flower size
     .clamp(true)
     .unknown(0.05);
 
-const flowerColor = d3.scaleSequential(d3.interpolatePuRd) // steps -> flower color
+const flowerColor = d3.scaleSequential(d3.interpolateWarm) // steps -> flower color
     .domain([0, 20000])
     .clamp(false);
 
@@ -24,12 +24,12 @@ const PADDING_TOP = 60;
 const PADDING_LEFT = 120;
 
 // Legend grid dimensions
-const LEGEND_HEIGHT = 600;
+const LEGEND_HEIGHT = 490;
 const LEGEND_COL_WIDTH = 350;        // each main column is wide
 const LEGEND_HEADER_Y = 60;          // where column headers sit
 const LEGEND_LABEL_X = 100;          // where row labels sit (right-aligned)
 const LEGEND_GRID_OFFSET_X = 180;    // where the grid cells start, leaving room for row labels
-const ROW_Y = [70, 280];            // y-coordinate for top row, bottom row
+const ROW_Y = [90, 190];            // y-coordinate for top row, bottom row
 
 // Sample values used across the wearables legend
 const SAMPLE_STEPS = 7500;
@@ -252,7 +252,7 @@ d3.json("combined-1.json").then(rawData => {
         .join("text")
         .attr("class", "row-header")
         .attr("x", LEGEND_LABEL_X)
-        .attr("y", (d, i) => legendCell(0, i).y + 40)
+        .attr("y", (d, i) => legendCell(0, i).y + legendCell(0, i).y/2)
         .attr("text-anchor", "end")
         .attr("font-size", 18)
         .attr("font-weight", "bold")
@@ -323,7 +323,7 @@ d3.json("combined-1.json").then(rawData => {
         .join("rect")
         .attr("class", "gradient")
         .attr("x", i => 40 + (i / gradientSteps) * barWidth)
-        .attr("y", 130)
+        .attr("y", 110)
         .attr("width", barWidth / gradientSteps + 1)
         .attr("height", 16)
         .attr("fill", i => flowerColor((i / gradientSteps) * 20000));
@@ -331,7 +331,7 @@ d3.json("combined-1.json").then(rawData => {
     // Endpoint labels
     bottomLeft.append("text")
         .attr("x", 40)
-        .attr("y", 160)
+        .attr("y", 140)
         .attr("text-anchor", "start")
         .attr("font-size", 10)
         .attr("fill", "#666")
@@ -339,7 +339,7 @@ d3.json("combined-1.json").then(rawData => {
 
     bottomLeft.append("text")
         .attr("x", 40 + barWidth)
-        .attr("y", 160)
+        .attr("y", 140)
         .attr("text-anchor", "end")
         .attr("font-size", 10)
         .attr("fill", "#666")
@@ -348,7 +348,7 @@ d3.json("combined-1.json").then(rawData => {
     // Section label
     bottomLeft.append("text")
         .attr("x", 10)
-        .attr("y", 138)
+        .attr("y", 120)
         .attr("text-anchor", "end")
         .attr("dominant-baseline", "middle")
         .attr("font-size", 14)
@@ -505,7 +505,7 @@ d3.json("combined-1.json").then(rawData => {
     monthGroups.append("text")
         .attr("class", "month-label")
         .attr("x", PADDING_LEFT - 106)
-        .attr("y", 70)
+        .attr("y", 74)
         .attr("transform", "rotate(-90)")
         .attr("text-anchor", "end")
         .attr("dominant-baseline", "middle")
@@ -520,7 +520,7 @@ d3.json("combined-1.json").then(rawData => {
         .join("text")
         .attr("class", "day-label")
         .attr("x", d => PADDING_LEFT + (d - 1) * CELL_SIZE)
-        .attr("y", PADDING_TOP - 10)
+        .attr("y", PADDING_TOP - 30)
         .attr("text-anchor", "middle")
         .attr("font-size", 9)
         .attr("font-family", "sans-serif")
@@ -549,7 +549,7 @@ d3.json("combined-1.json").then(rawData => {
             const yFirst = positionForDate(startDate, d.firstDay.date).y;
             const yLast = positionForDate(startDate, d.lastDay.date).y;
             const yMid = (yFirst + yLast) / 2;
-            const x = PADDING_LEFT - 60;
+            const x = PADDING_LEFT - 80;
             return `translate(${x}, ${yMid}) rotate(-90)`;
         })
         .text(d => d.year);
