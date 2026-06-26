@@ -14,7 +14,7 @@ const objectSize = d3.scaleLinear() // distance -> flower size
     .clamp(true)
     .unknown(0.05);
 
-const flowerColor = d3.scaleSequential(d3.interpolatePlasma) // steps -> flower color
+const flowerColor = d3.scaleSequential(d3.interpolatePuRd) // steps -> flower color
     .domain([0, 20000])
     .clamp(false);
 
@@ -29,7 +29,7 @@ const LEGEND_COL_WIDTH = 350;        // each main column is wide
 const LEGEND_HEADER_Y = 60;          // where column headers sit
 const LEGEND_LABEL_X = 100;          // where row labels sit (right-aligned)
 const LEGEND_GRID_OFFSET_X = 180;    // where the grid cells start, leaving room for row labels
-const ROW_Y = [100, 280];            // y-coordinate for top row, bottom row
+const ROW_Y = [70, 280];            // y-coordinate for top row, bottom row
 
 // Sample values used across the wearables legend
 const SAMPLE_STEPS = 7500;
