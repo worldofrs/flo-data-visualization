@@ -9,15 +9,19 @@
         h1 {
             display: flex;
             justify-content: center;
-            font-family:Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+            font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
         }
+
         body {
             background-color: #a0d6cc;
         }
+
         .content {
             display: flex;
-            justify-content: center; /* Centers horizontally */
-            align-items: center; /* Centers vertically */
+            justify-content: center;
+            /* Centers horizontally */
+            align-items: center;
+            /* Centers vertically */
         }
 
         #flower {
@@ -27,6 +31,30 @@
             max-width: 1400px;
             height: auto;
             /* border: dashed #0b2ce4 0.05em */
+        }
+
+        #tooltip {
+            position: absolute;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-family: 'EB Garamond', serif;
+            /* or whatever your piece uses */
+            font-size: 13px;
+            color: #222;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            max-width: 250px;
+        }
+
+        #tooltip strong {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 14px;
         }
     </style>
     <h1>Go with the Flo</h1>
@@ -40,7 +68,7 @@
         </svg> -->
     <div class="content">
         <svg id="flower"></svg>
-        <!-- <svg id="flower" width="3100" height="1000"></svg> -->
+        <div id="tooltip"></div>
     </div>
     <script src="d3/d3.v7.js"></script>
     <script src="script.js"></script>

@@ -22,6 +22,7 @@ const CELL_SIZE = 54;
 const ROW_HEIGHT = 60 * 1.55;        // vertical space per month, including gap
 const PADDING_TOP = 60;
 const PADDING_LEFT = 120;
+const HIT_SIZE = 36;
 
 // Legend grid dimensions
 const LEGEND_HEIGHT = 490;
@@ -252,7 +253,7 @@ d3.json("combined-1.json").then(rawData => {
         .join("text")
         .attr("class", "row-header")
         .attr("x", LEGEND_LABEL_X)
-        .attr("y", (d, i) => legendCell(0, i).y + legendCell(0, i).y/2)
+        .attr("y", (d, i) => legendCell(0, i).y + legendCell(0, i).y / 2)
         .attr("text-anchor", "end")
         .attr("font-size", 18)
         .attr("font-weight", "bold")
@@ -491,6 +492,64 @@ d3.json("combined-1.json").then(rawData => {
         }
     });
 
+    // -------------- TOOLTIPS -------------- //
+
+    const tooltip = d3.select("#tooltip");
+
+    dayGroups
+        .on("mouseenter", function (event, d) {
+            tooltip
+                .html(tooltipContent(d))
+                .style("opacity", 1);
+        })
+        .on("mousemove", function (event) {
+            tooltip
+                .style("left", (event.pageX + 12) + "px")
+                .style("top", (event.pageY + 12) + "px");
+        })
+        .on("mouseleave", function () {
+            tooltip.style("opacity", 0);
+        });
+
+    dayGroups.insert("rect", ":first-child")
+        .attr("class", "hit-area")
+        .attr("x", -HIT_SIZE / 2)
+        .attr("y", -HIT_SIZE / 2)
+        .attr("width", HIT_SIZE)
+        .attr("height", HIT_SIZE)
+        .attr("fill", "transparent")
+        .attr("pointer-events", "all");   // transparent SVG needs this to catch events
+
+    function tooltipContent(d) {
+        const dateStr = d.date.toLocaleDateString("en-US", {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+        });
+
+        const lines = [`<strong>${dateStr}</strong>`];
+
+        if (d.cycleId != null) {
+            const intensityWord = ["", "light", "medium", "heavy"][d.intensity] || `intensity ${d.intensity}`;
+            lines.push(`Period day — ${intensityWord} flow`);
+        }
+
+        if (d.steps != null) {
+            const completion = ((d.steps / stepGoal) * 100).toFixed(0);
+            lines.push(`${d.steps.toLocaleString()} steps (${completion}% of goal)`);
+        }
+
+        if (d.distance != null) {
+            lines.push(`${(d.distance / 1000).toFixed(2)} km walked`);
+        }
+
+        if (d.steps == null && d.distance == null) {
+            lines.push(`<em>No movement data</em>`);
+        }
+
+        return lines.join("<br>");
+    }
     // Month, day, and year labels
     const allPositions = data.map(d => positionForDate(startDate, d.date));
     const maxX = Math.max(...allPositions.map(p => p.x));
