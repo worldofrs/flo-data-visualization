@@ -122,13 +122,13 @@
         }
     </style>
     <h1>Go with the Flo</h1>
-    <div class="content">
+    <main class="content">
         <div id="viz-container">
             <div class="scroll-hint">Swipe to explore &rarr;</div>
             <svg id="flower"></svg>
-            <div id="tooltip"></div>
+            <div id="tooltip" role="tooltip" aria-live="polite" aria-atomic="true"></div>
         </div>
-    </div>
+    </main>
     <script src="d3/d3.v7.js"></script>
     <script src="script.js"></script>
 </body>

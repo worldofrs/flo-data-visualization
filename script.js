@@ -14,7 +14,7 @@ const objectSize = d3.scaleLinear() // distance -> flower size
     .clamp(true)
     .unknown(0.05);
 
-const flowerColor = d3.scaleSequential(d3.interpolateWarm) // steps -> flower color
+const flowerColor = d3.scaleSequential(d3.interpolateViridis) // steps -> flower color
     .domain([0, 20000])
     .clamp(false);
 
@@ -210,9 +210,9 @@ function drawBudsWithRings(selection, options) {
 // opacityDimmed == true  -> pad rendered faded (used behind a flower)
 // opacityDimmed == false -> pad rendered solid (standalone)
 function drawLilypads(selection, options, opacityDimmed) {
-    const backgroundColor = opacityDimmed ? "#fefec169" : "#fefec1fd";
-    const mainColor = opacityDimmed ? "#65ad3e6e" : "#65ad3e";
-    const overlapColor = opacityDimmed ? "#06420e6f" : "#06420e";
+    const backgroundColor = opacityDimmed ? "#c6dbef69" : "#c6dbef";
+    const mainColor = opacityDimmed ? "#2171b56e" : "#2171b5";
+    const overlapColor = opacityDimmed ? "#08306b6f" : "#08306b";
     const lilypadRadius = opacityDimmed ? 6 : options.lilypadRadius;
     const completion = options.completion;
 
@@ -336,6 +336,12 @@ function getGroupBounds(group) {
 function render(data, lilypadRadius, config) {
     const svg = d3.select("#flower");
     svg.selectAll("*").remove();
+
+    // SVG-level ARIA attributes
+    svg.attr("role", "img")
+        .attr("aria-label", "Calendar visualization of daily step counts, distances, and menstrual cycle data displayed as flowers and lilypads");
+    svg.append("title").text("Go with the Flo — Daily Activity and Cycle Tracker");
+    svg.append("desc").text("A calendar heatmap where each day is represented by a flower or lilypad glyph. Flower color (Viridis scale) encodes step count, flower size encodes walking distance, petal layers encode period intensity, and lilypad arc completion encodes step goal progress.");
 
     const isMobile = config.breakpoint === "mobile";
     const sp = config.legendSpacing;
@@ -827,6 +833,15 @@ function render(data, lilypadRadius, config) {
     });
 
 
+    // -------------- DAY GROUP ARIA LABELS -------------- //
+
+    dayGroups.each(function (d) {
+        const el = d3.select(this);
+        el.attr("role", "button")
+            .attr("tabindex", "0")
+            .attr("aria-label", tooltipPlainText(d));
+    });
+
     // -------------- TOOLTIPS -------------- //
 
     const tooltip = d3.select("#tooltip");
@@ -900,6 +915,52 @@ function render(data, lilypadRadius, config) {
             });
     }
 
+    // Keyboard focus/blur handlers for accessibility
+    dayGroups
+        .on("focus", function (event, d) {
+            tooltip
+                .html(tooltipContent(d))
+                .style("opacity", 1);
+
+            if (isMobile) {
+                tooltip
+                    .style("left", "0")
+                    .style("top", "auto")
+                    .style("right", "0")
+                    .style("bottom", "0");
+            } else {
+                // Position tooltip near the focused element
+                const container = document.getElementById("viz-container");
+                const containerRect = container.getBoundingClientRect();
+                const groupRect = this.getBoundingClientRect();
+
+                let left = groupRect.left - containerRect.left + groupRect.width / 2 + 12;
+                let top = groupRect.top - containerRect.top + groupRect.height / 2 + 12;
+
+                const tooltipNode = tooltip.node();
+                const tipW = tooltipNode.offsetWidth;
+                const tipH = tooltipNode.offsetHeight;
+
+                if (left + tipW > containerRect.width) left = left - tipW - 24;
+                if (top + tipH > containerRect.height) top = top - tipH - 24;
+                if (left < 0) left = 4;
+                if (top < 0) top = 4;
+
+                tooltip
+                    .style("left", left + "px")
+                    .style("top", top + "px");
+            }
+        })
+        .on("blur", function () {
+            tooltip.style("opacity", 0);
+        })
+        .on("keydown", function (event) {
+            if (event.key === "Escape") {
+                tooltip.style("opacity", 0);
+                this.blur();
+            }
+        });
+
     function tooltipContent(d) {
         const dateStr = d.date.toLocaleDateString("en-US", {
             weekday: 'long',
@@ -929,6 +990,37 @@ function render(data, lilypadRadius, config) {
         }
 
         return lines.join("<br>");
+    }
+
+    function tooltipPlainText(d) {
+        const dateStr = d.date.toLocaleDateString("en-US", {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+        });
+
+        const lines = [dateStr];
+
+        if (d.cycleId != null) {
+            const intensityWord = ["", "light", "medium", "heavy"][d.intensity] || `intensity ${d.intensity}`;
+            lines.push(`Period day, ${intensityWord} flow`);
+        }
+
+        if (d.steps != null) {
+            const completion = ((d.steps / stepGoal) * 100).toFixed(0);
+            lines.push(`${d.steps.toLocaleString()} steps (${completion}% of goal)`);
+        }
+
+        if (d.distance != null) {
+            lines.push(`${(d.distance / 1000).toFixed(2)} km walked`);
+        }
+
+        if (d.steps == null && d.distance == null) {
+            lines.push("No movement data");
+        }
+
+        return lines.join(". ");
     }
 
 
