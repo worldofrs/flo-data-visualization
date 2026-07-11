@@ -2,6 +2,7 @@
 <html>
 
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 
 <body>
@@ -10,27 +11,33 @@
             display: flex;
             justify-content: center;
             font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+            font-size: clamp(1.2rem, 4vw, 2rem);
+            margin: 0.5em 0;
         }
 
         body {
             background-color: #a0d6cc;
+            margin: 0;
         }
 
         .content {
             display: flex;
             justify-content: center;
-            /* Centers horizontally */
             align-items: center;
-            /* Centers vertically */
+        }
+
+        #viz-container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
         }
 
         #flower {
             width: 100%;
-            /* background-color: #a0d6cc; */
-            display: center;
             max-width: 1400px;
             height: auto;
-            /* border: dashed #0b2ce4 0.05em */
+            display: block;
         }
 
         #tooltip {
@@ -43,7 +50,6 @@
             border-radius: 4px;
             padding: 8px 12px;
             font-family: 'EB Garamond', serif;
-            /* or whatever your piece uses */
             font-size: 13px;
             color: #222;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -56,19 +62,72 @@
             margin-bottom: 4px;
             font-size: 14px;
         }
+
+        .scroll-hint {
+            display: none;
+            text-align: center;
+            font-family: sans-serif;
+            font-size: 13px;
+            color: #005b56;
+            padding: 6px 0;
+            opacity: 0.8;
+        }
+
+        /* Mobile: < 600px */
+        @media (max-width: 599px) {
+            #viz-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            #flower {
+                width: auto;
+            }
+
+            .scroll-hint {
+                display: block;
+            }
+
+            #tooltip {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                top: auto;
+                max-width: none;
+                border-radius: 8px 8px 0 0;
+                padding: 12px 16px;
+                font-size: 14px;
+                box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.15);
+                text-align: center;
+            }
+
+            #tooltip strong {
+                font-size: 15px;
+            }
+        }
+
+        /* Tablet: 600–1023px */
+        @media (min-width: 600px) and (max-width: 1023px) {
+            #viz-container {
+                overflow-x: visible;
+            }
+        }
+
+        /* Desktop: 1024px+ */
+        @media (min-width: 1024px) {
+            #viz-container {
+                overflow-x: visible;
+            }
+        }
     </style>
     <h1>Go with the Flo</h1>
-    <!-- <svg width="600" height="300" style="border: 1px solid red;">
-             <path d="M 0,0 C 40,80 40,80 0,100" stroke="black"></path>
-            <path d="M 0,0 C 30,60 30,60 0,100 C -30,60 -30,60 0,0" transform="translate(100, 100)" stroke="black"></path>
-            <path d="M 0,0 Q 50,95 0,100 Q -50, 95 0,0" transform="translate(200,100)" stroke="black"></path>
-            <path d="M 0,0 Q 60,20 0,100 Q -60,20 0,0" transform="translate(300,100)" stroke="black"></path>
-            <path d="M 0,0 C 30,-40 50,10 20,40 L20,40 0,100" transform="translate(400,100)" stroke="black"></path>
-            <path d="M -10,-10 C 0,-100 60,-50 90,-120 C 90,-50 60,10 -10,-10 " transform="translate(500,200)" stroke="black"></path>
-        </svg> -->
     <div class="content">
-        <svg id="flower"></svg>
-        <div id="tooltip"></div>
+        <div id="viz-container">
+            <div class="scroll-hint">Swipe to explore &rarr;</div>
+            <svg id="flower"></svg>
+            <div id="tooltip"></div>
+        </div>
     </div>
     <script src="d3/d3.v7.js"></script>
     <script src="script.js"></script>

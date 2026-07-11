@@ -1,5 +1,5 @@
 flo-data/
 combined.json
 *.json
-!combined-1.json
+combined-1.json
 eda.ipynb
